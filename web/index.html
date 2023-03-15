@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="nostrawars">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png" />
+
+  <title>Nostra Wars</title>
+  <link rel="manifest" href="manifest.json">
+  <script src="https://unpkg.com/nostr-tools/lib/nostr.bundle.js"></script>
+
+  <script>
+    // The value below is injected by flutter build, do not touch.
+    var serviceWorkerVersion = null;
+  </script>
+  <!-- This script adds the flutter initialization JS code -->
+  <script src="flutter.js" defer></script>
+</head>
+
+<body>
+  <style>
+    body {
+      background-color: #212332;
+    }
+  </style>
+
+  <!-- Loading spinner -->
+  <div id="loading">
+    <style>
+      body {
+        overflow: hidden;
+      }
+
+      #loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(33, 35, 50, 0.8);
+        z-index: 9999;
+      }
+
+      #loading img {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) scale(0.5);
+        animation: move 5s linear infinite;
+      }
+
+      #loading h1 {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: white;
+        text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+        font-size: 64px;
+        font-weight: bold;
+        font-family: Arial, sans-serif;
+      }
+
+      #loading h2 {
+        position: absolute;
+        top: 60%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: white;
+        text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+        font-size: 24px;
+        font-family: Arial, sans-serif;
+      }
+
+      @keyframes move {
+        0% {
+          transform: translate(-50%, -50%) rotate(0deg) scale(0.5);
+        }
+
+        25% {
+          transform: translate(-100%, -100%) rotate(0deg) scale(0.5);
+        }
+
+        50% {
+          transform: translate(-50%, -50%) rotate(0deg) scale(0.5);
+        }
+
+        75% {
+          transform: translate(0%, 0%) rotate(0deg) scale(0.5);
+        }
+
+        100% {
+          transform: translate(-100%, 0%) rotate(0deg) scale(0.5);
+        }
+      }
+    </style>
+    <h1>Nostra Wars</h1>
+    <h2>Loading...</h2>
+    <img src="icons/ufo.png" alt="Loading..." />
+  </div>
+
+
+  <script>
+    window.addEventListener('load', function (ev) {
+      var loading = document.querySelector('#loading');
+      // Download main.dart.js
+      _flutter.loader.loadEntrypoint({
+        serviceWorker: {
+          serviceWorkerVersion: serviceWorkerVersion,
+        }
+      }).then(function (engineInitializer) {
+        loading.classList.add('main_done');
+        return engineInitializer.initializeEngine();
+      }).then(function (appRunner) {
+        loading.classList.add('init_done');
+        return appRunner.runApp();
+      }).then(function (app) {
+        window.setTimeout(function () {
+          loading.remove();
+        }, 200);
+      });
+    });
+  </script>
+</body>
+
+</html>
