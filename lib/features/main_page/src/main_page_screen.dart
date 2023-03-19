@@ -3,9 +3,14 @@ import 'package:nostrawars/component_library/component_library.dart';
 import 'package:nostrawars/features/create_room/src/create_room_screen.dart';
 import 'package:nostrawars/features/join_room/join_room.dart';
 
-class MainPageScreen extends StatelessWidget {
+class MainPageScreen extends StatefulWidget {
   const MainPageScreen({super.key});
 
+  @override
+  State<MainPageScreen> createState() => _MainPageScreenState();
+}
+
+class _MainPageScreenState extends State<MainPageScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -51,6 +56,10 @@ class MainPageScreen extends StatelessWidget {
                     elevation: 8,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
+                      side: const BorderSide(
+                        color: athens,
+                        width: 2,
+                      ),
                     ),
                     margin: const EdgeInsets.symmetric(horizontal: 32),
                     child: Padding(
@@ -109,7 +118,7 @@ class MainPageScreen extends StatelessWidget {
             bottom: 10,
             right: 10,
             child: Text('Made for #NostHack'),
-          )
+          ),
         ],
       ),
     );

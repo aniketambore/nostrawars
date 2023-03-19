@@ -8,6 +8,8 @@ environment:
 
 dependencies:
   crypto: ^3.0.2
+  flame: ^1.6.0
+  flame_audio: ^1.4.0
   flutter:
     sdk: flutter
   flutter_svg: ^2.0.4
@@ -24,3 +26,5 @@ flutter:
   assets:
     - assets/bg/
     - assets/icons/
+    - assets/images/
+    - assets/audio/

@@ -20,10 +20,6 @@ class NostrTools {
   external static get nip04;
 }
 
-// Define an external method for stringifying an object using JSON.stringify
-@JS("JSON.stringify")
-external String stringify(Object obj);
-
 // Define an anonymous JS interop class for an event
 @JS()
 @anonymous

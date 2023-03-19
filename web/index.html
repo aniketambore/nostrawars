@@ -18,9 +18,9 @@
   <link rel="icon" type="image/png" href="favicon.png" />
 
   <title>Nostra Wars</title>
-  <link rel="manifest" href="manifest.json">
-  <script src="https://unpkg.com/nostr-tools/lib/nostr.bundle.js"></script>
+  <script src="https://unpkg.com/nostr-tools/lib/nostr.bundle.js" defer></script>
 
+  <link rel="manifest" href="manifest.json">
   <script>
     // The value below is injected by flutter build, do not touch.
     var serviceWorkerVersion = null;
@@ -77,18 +77,6 @@
         font-family: Arial, sans-serif;
       }
 
-      #loading h2 {
-        position: absolute;
-        top: 60%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        text-align: center;
-        color: white;
-        text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
-        font-size: 24px;
-        font-family: Arial, sans-serif;
-      }
-
       @keyframes move {
         0% {
           transform: translate(-50%, -50%) rotate(0deg) scale(0.5);
@@ -112,7 +100,6 @@
       }
     </style>
     <h1>Nostra Wars</h1>
-    <h2>Loading...</h2>
     <img src="icons/ufo.png" alt="Loading..." />
   </div>
 
