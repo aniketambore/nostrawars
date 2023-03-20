@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nostrawars/component_library/component_library.dart';
 import 'package:nostrawars/features/create_room/src/create_room_screen.dart';
-import 'package:nostrawars/features/join_room/join_room.dart';
 
 class MainPageScreen extends StatefulWidget {
   const MainPageScreen({super.key});
@@ -97,12 +96,12 @@ class _MainPageScreenState extends State<MainPageScreen> {
                           const SizedBox(height: 16),
                           ExpandedOutlinedButton(
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const JoinRoomScreen(),
-                                ),
-                              );
+                              // Navigator.push(
+                              //   context,
+                              //   MaterialPageRoute(
+                              //     builder: (context) => const JoinRoomScreen(),
+                              //   ),
+                              // );
                             },
                             label: 'Join Room',
                           ),

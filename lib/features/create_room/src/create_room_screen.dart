@@ -6,10 +6,12 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:nostr/nostr.dart';
 import 'package:nostrawars/features/game/game.dart';
 import 'package:nostrawars/features/main_page/main_page.dart';
-import 'package:nostrawars/nostr_tools/nostr_tools.dart';
 import 'package:nostrawars/component_library/component_library.dart';
+import 'package:nostrawars/nostr/nostr.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 class CreateRoomScreen extends StatefulWidget {
   const CreateRoomScreen({super.key});
@@ -19,7 +21,11 @@ class CreateRoomScreen extends StatefulWidget {
 }
 
 class _CreateRoomScreenState extends State<CreateRoomScreen> {
-  var relay = NostrTools.relayInit('wss://relay.damus.io');
+  // var relay = NostrTools.relayInit('wss://relay.damus.io');
+  final _relayUrl = 'wss://nos.lol';
+  final keys = Keys();
+  late WebSocketChannel _relay;
+  late Nip04 _nip04;
   var sk1 = '';
   var pk1 = '';
   bool connected = false;
@@ -33,6 +39,17 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   bool gameStarted = false;
   late final MyGame _game;
   String opponentPlayer = '';
+
+  Future<void> _closeRelay() async {
+    print('[+] main.dart | _ChatScreenState | _closeRelay()');
+
+    await _relay.sink.close();
+    setState(() {
+      connected = false;
+    });
+  }
+
+  final Completer<void> _connectCompleter = Completer<void>();
 
   Future<void> startGame(String gameText) async {
     print('gameText: $gameText');
@@ -65,19 +82,21 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     _game = MyGame(onGameStateUpdate: (position, health) async {
       // Loop until the send succeeds if the payload is to notify defeat.
       do {
-        sendDm(
+        await sendDm(
           '{"x":${position.x},"y":${position.y},"health":$health}',
           opponentPlayer,
         );
         print(
           '[+] Sending (my): x: ${position.x}, y: ${position.y}, health: $health',
         );
-        // wait for a frame to avoid infinite rate limiting loops
+        // // wait for a frame to avoid infinite rate limiting loops
         await Future.delayed(Duration.zero);
         setState(() {});
-      } while (gameStarted && health <= 0);
+      } while (gameStarted && health <= 0 && connected);
     }, onGameOver: (playerWon) async {
-      relay.close();
+      // relay.close();
+      print('[!] Line:93 | _closeRelay triggered');
+      _closeRelay();
       setState(() {
         gameStarted = false;
       });
@@ -90,7 +109,9 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
             actions: [
               TextButton(
                 onPressed: () async {
-                  relay.close();
+                  // relay.close();
+                  print('[!] Line:108 | _closeRelay triggered');
+                  _closeRelay();
                   Navigator.of(context).pop();
                   Navigator.of(context).push(
                     MaterialPageRoute(
@@ -105,7 +126,6 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         }),
       );
     });
-
     // await for a frame so that the widget mounts
     await Future.delayed(Duration.zero);
   }
@@ -142,125 +162,120 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   }
 
   void _connectRelays() async {
-    print('[+] [_connectRelays() | create_room_screen.dart]');
+    _nip04 = Nip04(sk1);
 
-    // Set up event listeners for connect and error events
-    relay.on('connect', allowInterop(() {
-      setState(() => connected = true);
-      print('[+] connected!}');
-    }));
+    print('[+] [main.dart | _ChatScreenState | _connectRelays()]');
+    final subscriptionId = generate64RandomHexChars();
 
-    relay.on('error', allowInterop(() {
-      print('[!] failed to connect');
-    }));
-
-    relay.on('disconnect', allowInterop(() {
-      print('[!] disconnected');
-      _retryConnect();
-    }));
-
-    try {
-      await relay.connect();
-
-      var sub = await relay.sub([
-        {
-          'kinds': [4],
-          '#p': [pk1],
-        }
-      ]);
-
-      var sub2 = await relay.sub([
-        {
-          'kinds': [4],
-          'authors': [pk1],
-        }
-      ]);
-
-      sub.on('event', allowInterop((event) {
-        print('[+] event: $event');
-        _decryptText(event);
-      }));
-
-      // sub.on('eose', allowInterop(() {
-      //   print('[+] sub1 unsub');
-      //   sub.unsub();
-      // }));
-
-      sub2.on('event', allowInterop((event) {
-        print('[+] event: $event');
-        _decryptText(event);
-      }));
-
-      // sub2.on('eose', allowInterop(() {
-      //   print('[+] sub2 unsub');
-      //   sub2.unsub();
-      // }));
-    } catch (error) {
-      print('Error connecting to relay: $error');
-      print('[+] Line: 211');
-    }
-  }
-
-  void _decryptText(Event event) async {
-    // print('[+] [_decryptText() | create_room_screen.dart]');
-    String plaintext = '';
-    String partner;
-    var receiverTag = event.tags.firstWhere(
-      (tag) => tag[0] == 'p' && tag[1] != '',
-      orElse: () => '',
+    _relay = WebSocketChannel.connect(
+      // Uri.parse('wss://relay.damus.io'), // or any nostr relay
+      Uri.parse(_relayUrl), // or any nostr relay
     );
 
-    if (receiverTag.isEmpty) {
-      return;
-    }
+    final filter = Request(subscriptionId, [
+      Filter(
+        kinds: [4],
+        p: [pk1],
+        since: currentUnixTimestampSeconds(),
+      ),
+    ]);
 
-    var receiver = receiverTag[1];
-    print('receiver: $receiver');
+    _relay.sink.add(filter.serialize());
 
-    if (receiver == pk1) {
-      plaintext = await _decrypt(event.content, event.pubkey);
-      partner = receiver;
-    }
-
-    if (plaintext.isNotEmpty) {
-      print('[+] Plaintext is $plaintext');
-      print('[+] gameStarted: $gameStarted');
-      if (gameStarted) {
-        // print('[+] plainText: $plaintext');
-        setState(() => opponentPlayer = event.pubkey);
-        startGame(plaintext);
-        return;
-      }
-
-      List<String> parsedList = parseText(plaintext);
-      if (parsedList.first == "SYN" && !syn && !synAck && !ack) {
+    _relay.stream.listen(
+      (payload) async {
         print(
-          '[+] [_decrypt() | create_room_screen.dart]: SYN: ${parsedList.last}',
+          '[+] [main.dart | _ChatScreenState | _connectRelays()] | Received event: $payload',
         );
-        setState(() => syn = true);
-        var bytes = utf8.encode(parsedList.last);
-        var messageToSend = 'SYN-ACK:${sha256.convert(bytes)}';
-        sendDm(messageToSend, event.pubkey);
-      } else if (parsedList.first == "ACK" &&
-          parsedList.last == synAckSha &&
-          syn &&
-          synAck) {
+        final message = Message.deserialize(payload);
+
+        // if (message.type == 'OK') {
+        //   print('[+] [main.dart | __connectRelays() | _sendEvent() response]');
+        //   setState(() {
+        //     _msgList.add(messageController.text.trim());
+        //     messageController.clear();
+        //   });
+        // }
+
+        if (message.type != "EVENT") {
+          return;
+        }
+
+        final event = message.message as Event;
         print(
-          '[+] [_decrypt() | create_room_screen.dart]: ACK: ${parsedList.last}',
+          '[+] [main.dart | _ChatScreenState | _connectRelays()] | Received event from: ${event.pubkey}',
         );
-        setState(() {
-          ack = true;
-          gameStarted = true;
-        });
-        // await a frame to allow subscribing to a new channel in a realtime callback
 
-        await Future.delayed(Duration.zero);
+        try {
+          final plaintext = await _nip04.decryptContent(event);
 
-        setState(() {});
-        _game.startNewGame();
-        print('[+] Push to game screen');
-      }
-    }
+          print('[+] plaintext: $plaintext');
+
+          if (plaintext.isNotEmpty) {
+            print('[+] Plaintext is $plaintext');
+            print('[+] gameStarted: $gameStarted');
+            if (gameStarted) {
+              // print('[+] plainText: $plaintext');
+              // setState(() => opponentPlayer = event.pubkey);
+              startGame(plaintext);
+              return;
+            }
+
+            List<String> parsedList = parseText(plaintext);
+            if (parsedList.first == "SYN" && !syn && !synAck && !ack) {
+              print(
+                '[+] [_decrypt() | create_room_screen.dart]: SYN: ${parsedList.last}',
+              );
+              setState(() => syn = true);
+              var bytes = utf8.encode(parsedList.last);
+              var messageToSend = 'SYN-ACK:${sha256.convert(bytes)}';
+              sendDm(messageToSend, event.pubkey);
+            } else if (parsedList.first == "ACK" &&
+                parsedList.last == synAckSha &&
+                syn &&
+                synAck) {
+              print(
+                '[+] [_decrypt() | create_room_screen.dart]: ACK: ${parsedList.last}',
+              );
+              setState(() {
+                ack = true;
+                gameStarted = true;
+                opponentPlayer = event.pubkey;
+              });
+
+              // await a frame to allow subscribing to a new channel in a realtime callback
+              await Future.delayed(Duration.zero);
+              setState(() {});
+              _game.startNewGame();
+              print('[+] Push to game screen');
+            }
+          }
+        } catch (e) {
+          print(
+            '[!] [main.dart | _ChatScreenState | _connectRelays()] : [Catch: $e]',
+          );
+          setState(() => connected = false);
+          _closeRelay();
+          _retryConnect();
+        }
+      },
+      onError: (error) {
+        print(
+            '[!] [main.dart | _ChatScreenState | _connectRelays()] | Error: $error');
+        print('[!] Line:317 | _closeRelay triggered');
+
+        setState(() => connected = false);
+        _closeRelay();
+        _retryConnect();
+      },
+      cancelOnError: true,
+    );
+
+    _connectCompleter.complete();
+
+    setState(() {
+      connected = true;
+    });
   }
 
   List<String> parseText(String string) {
@@ -283,26 +298,12 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     }
   }
 
-  Future<String> _decrypt(String content, String pubkey) async {
-    print('[+] [_decrypt() | create_room_screen.dart]');
-
-    Completer completer = Completer();
-    allowInterop(() {
-      NostrTools.nip04
-          .decrypt(sk1, pubkey, content)
-          .then(allowInterop((result) {
-        completer.complete(result);
-      }));
-    })();
-
-    var plaintext = await completer.future;
-    return plaintext;
-  }
-
   @override
   void dispose() {
-    relay.close();
+    print('[+] main.dart | _CreateRoomScreenState | dispose()');
     super.dispose();
+    print('[!] Line:434 | _closeRelay triggered');
+    _closeRelay();
   }
 
   Widget gameOn() {
@@ -355,7 +356,10 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
             child: gameStarted
                 ? GameWidget(game: _game)
                 // ? gameOn()1
-                : CreateRoomCard(npubEncode: npubEncode, relay: relay),
+                : CreateRoomCard(
+                    npubEncode: npubEncode,
+                    relay: _relay,
+                  ),
           ),
           const Positioned(
             bottom: 10,
@@ -377,9 +381,9 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                     const SizedBox(
                       width: Spacing.small,
                     ),
-                    const Text(
-                      'wss://relay.damus.io',
-                      style: TextStyle(
+                    Text(
+                      _relayUrl,
+                      style: const TextStyle(
                         fontSize: FontSize.medium,
                       ),
                     )
@@ -388,6 +392,13 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                 (pk1.isNotEmpty && sk1.isNotEmpty && !gameStarted)
                     ? ShowKeys(npubEncode: npubEncode, nsecEncode: nsecEncode)
                     : Container(),
+                TextButton(
+                  onPressed: () {
+                    _closeRelay();
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Close'),
+                ),
               ],
             ),
           ),
@@ -465,69 +476,75 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     );
   }
 
-  String get npubEncode => NostrTools.nip19.npubEncode(pk1);
+  String get npubEncode => keys.npubEncode(pk1);
 
-  String get nsecEncode => NostrTools.nip19.nsecEncode(sk1);
+  String get nsecEncode => keys.nsecEncode(sk1);
 
-  Future<String> _encryptMessage(String message, String publicKey) async {
-    final completer = Completer<String>();
+  Future<void> sendDm(String message, String receiver) async {
+    if (connected) {
+      final start = DateTime.now();
 
-    allowInterop(() {
-      NostrTools.nip04
-          .encrypt(sk1, publicKey, message)
-          .then(allowInterop((result) {
-        completer.complete(result);
-      }));
-    })();
+      if (message.trim().isEmpty) return;
 
-    return completer.future;
+      final pk2 = receiver;
+      print('[+] Sending to pubkey: $pk2');
+
+      final ciphertext = _nip04.encrypt(pk2, message);
+      print('[+] ciphertext: $ciphertext');
+
+      // Event event = Event.from(
+      //   kind: 4,
+      //   tags: [
+      //     ['p', pk2]
+      //   ],
+      //   content: ciphertext,
+      //   privkey: sk1,
+      //   createdAt: currentUnixTimestampSeconds(),
+      // );
+
+      Event event = Event.partial(
+        kind: 4,
+        tags: [
+          ['p', pk2]
+        ],
+        content: ciphertext,
+        pubkey: pk1,
+        createdAt: currentUnixTimestampSeconds(),
+      );
+
+      event.id = event.getEventId();
+      event.sig = event.getSignature(sk1);
+
+      var end = DateTime.now();
+      var time = end.difference(start);
+      print('[!] Got the event now $time!');
+
+      await _sendEvent(event, message);
+    }
   }
 
-  void sendDm(String message, String receiver) async {
-    final pk2 = receiver;
-    print('[+] Sending to pubkey: $pk2');
+  Future<void> _sendEvent(Event event, String message) async {
+    try {
+      _relay.sink.add(event.serialize());
 
-    if (message.trim().isEmpty) return;
-
-    final ciphertext = await _encryptMessage(message, pk2);
-
-    print('[+] ciphertext: $ciphertext');
-
-    final event = Event(
-      kind: 4,
-      pubkey: pk1,
-      tags: [
-        ['p', pk2]
-      ],
-      content: ciphertext,
-      created_at: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-    );
-
-    sendEvent(event, message);
-  }
-
-  void sendEvent(Event event, String message) {
-    event.id = NostrTools.getEventHash(event);
-    event.sig = NostrTools.signEvent(event, sk1);
-
-    final pub = relay.publish(event);
-    pub.on('ok', allowInterop(() {
       _onPublishSuccess(message);
-    }));
-
-    pub.on('failed', allowInterop((reason) {
-      print('[+] failed to publish to relay: $reason');
-    }));
+    } catch (e) {
+      print(
+        '[!] [create_room_screen.dart | _CreateRoomScreenState | _sendEvent()]',
+      );
+    }
   }
 
   void _onPublishSuccess(String message) {
-    print('[+] relay has accepted our event');
-    List<String> parsedList = parseText(message);
-    if (parsedList.first == 'SYN-ACK') {
-      setState(() {
-        synAck = true;
-        synAckSha = parsedList.last;
-      });
+    print('[+] _onPublishSuccess | relay has accepted our event');
+    if (!synAck) {
+      List<String> parsedList = parseText(message);
+      if (parsedList.first == 'SYN-ACK') {
+        setState(() {
+          synAck = true;
+          synAckSha = parsedList.last;
+        });
+      }
     }
   }
 }
@@ -646,7 +663,7 @@ class CreateRoomCard extends StatelessWidget {
   });
 
   final String npubEncode;
-  final dynamic relay;
+  final WebSocketChannel relay;
 
   @override
   Widget build(BuildContext context) {
@@ -699,7 +716,7 @@ class CreateRoomCard extends StatelessWidget {
                   const SizedBox(height: 16),
                   ExpandedOutlinedButton(
                     onTap: () {
-                      relay.close();
+                      relay.sink.close();
                       Navigator.pop(context);
                     },
                     label: 'Close',
