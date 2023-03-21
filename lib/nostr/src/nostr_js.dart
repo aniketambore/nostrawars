@@ -62,13 +62,21 @@ import 'package:js/js.dart';
 // external String stringify(Object obj);
 
 @JS()
-external Future<bool> connecteToRelay();
+external Future<bool> connectToRelay(
+    void Function() connectedCallback,
+    String sk1,
+    String pk1,
+    void Function(String, String) eventReceivedCallback);
 
 @JS()
-external Future<bool> sendDm(message, senderSk, senderPk, receiverPk);
+external Future<bool> sendDm(message, senderSk, senderPk, receiverPk,
+    void Function(String) onPublishSuccessCallback);
 
 @JS()
 external String nsecEncode(sk);
 
 @JS()
 external String npubEncode(pk);
+
+@JS()
+external void closeRelay();

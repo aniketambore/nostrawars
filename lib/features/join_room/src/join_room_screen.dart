@@ -6,12 +6,11 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:js/js.dart';
 import 'package:nostrawars/component_library/component_library.dart';
 import 'package:nostrawars/features/game/game.dart';
 import 'package:nostrawars/features/main_page/main_page.dart';
 import 'package:nostrawars/nostr/nostr.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:nostr/nostr.dart' as NostrDart;
 import 'package:nostrawars/nostr/src/nostr_js.dart' as NostrJS;
 
 class JoinRoomScreen extends StatefulWidget {
@@ -26,8 +25,6 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
   final _relayUrl = 'wss://relay.damus.io';
   late KeyPair userKeys;
   final keys = Keys();
-  late WebSocketChannel _relay;
-  late Nip04 _nip04;
   bool connected = false;
 
   String synId = '';
@@ -39,13 +36,10 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
   bool gameStarted = false;
   late final MyGame _game;
   String opponentPlayer = '';
-  bool startNewGame = false;
 
-  final Completer<void> _connectCompleter = Completer<void>();
-
-  Future<void> _closeRelay() async {
+  void _closeRelay() async {
     print('[+] join_room_screen.dart | _JoinRoomScreenState | _closeRelay()');
-    await _relay.sink.close();
+    NostrJS.closeRelay();
   }
 
   Future<void> startGame(String gameText) async {
@@ -145,110 +139,48 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
   //   print("privKey: $sk1\npubkey: $pk1");
   // }
 
-  Future<void> _retryConnect() async {
-    print(
-        '[+] [join_room_screen.dart | _JoinRoomScreenState | _retryConnect()]');
-    await Future.delayed(const Duration(seconds: 10));
-    _connectRelays();
+  void connectedCallback() {
+    setState(() => connected = true);
+  }
+
+  void eventReceivedCallback(String plaintext, String opponentPk) {
+    print('[+] event received: plaintext: $plaintext');
+    if (plaintext.isNotEmpty) {
+      print(
+          '[+] [join_room_screen.dart | _JoinRoomScreenState | _connectRelays()] | gameStarted: $gameStarted');
+      if (gameStarted) {
+        startGame(plaintext);
+        return;
+      }
+      List<String> parsedList = parseText(plaintext);
+      if (parsedList.first == "SYN-ACK" && syn && !synAck && !ack) {
+        var bytes = utf8.encode(synId);
+        var sha = sha256.convert(bytes);
+        if (parsedList.last == sha.toString()) {
+          print(
+            '[+] [parsed | join_room_screen.dart]: SYN-ACK: ${parsedList.last}',
+          );
+          setState(() {
+            synAck = true;
+            opponentPlayer = opponentPk;
+          });
+          sendDm('ACK:${parsedList.last}', opponentPk);
+        }
+      }
+    }
   }
 
   void _connectRelays() async {
     print(
         '[+] [join_room_screen.dart | _JoinRoomScreenState | _connectRelays()]');
 
-    _nip04 = Nip04(userKeys.privateKey);
-
-    final subscriptionId = NostrDart.generate64RandomHexChars();
-
-    _relay = WebSocketChannel.connect(
-      Uri.parse(_relayUrl),
+    await NostrJS.connectToRelay(
+      allowInterop(() => connectedCallback()),
+      userKeys.privateKey,
+      userKeys.publicKey,
+      allowInterop((plaintext, opponentPk) =>
+          eventReceivedCallback(plaintext, opponentPk)),
     );
-
-    final filter = NostrDart.Request(subscriptionId, [
-      NostrDart.Filter(
-        kinds: [4],
-        p: [userKeys.publicKey],
-        since: NostrDart.currentUnixTimestampSeconds(),
-      ),
-    ]);
-
-    _relay.sink.add(filter.serialize());
-
-    _relay.stream.listen(
-      (payload) async {
-        print(
-          '[+] [join_room_screen.dart | _connectRelays()] | Received event: $payload',
-        );
-        final message = NostrDart.Message.deserialize(payload);
-
-        if (message.type == 'OK') {
-          print(
-            '[+] [join_room_screen.dart | __connectRelays()]: message type OK: message: $message',
-          );
-        }
-
-        if (message.type != "EVENT") {
-          return;
-        }
-
-        final event = message.message as NostrDart.Event;
-        print(
-          '[+] [join_room_screen.dart | _JoinRoomScreenState | _connectRelays()] | Received event from: ${event.pubkey}',
-        );
-
-        try {
-          final plaintext = await _nip04.decryptContent(event);
-          print(
-              '[+] [join_room_screen.dart | _JoinRoomScreenState | _connectRelays()] | plaintext: $plaintext');
-
-          if (plaintext.isNotEmpty) {
-            print(
-                '[+] [join_room_screen.dart | _JoinRoomScreenState | _connectRelays()] | gameStarted: $gameStarted');
-            if (gameStarted) {
-              startGame(plaintext);
-              return;
-            }
-            List<String> parsedList = parseText(plaintext);
-            if (parsedList.first == "SYN-ACK" && syn && !synAck && !ack) {
-              var bytes = utf8.encode(synId);
-              var sha = sha256.convert(bytes);
-              if (parsedList.last == sha.toString()) {
-                print(
-                  '[+] [parsed | join_room_screen.dart]: SYN-ACK: ${parsedList.last}',
-                );
-                setState(() {
-                  synAck = true;
-                  opponentPlayer = event.pubkey;
-                });
-                sendDm('ACK:${parsedList.last}', event.pubkey);
-              }
-            }
-          }
-        } catch (e) {
-          print(
-            '[!] [join_room_screen.dart | _connectRelays()] : [Catch: $e]',
-          );
-          setState(() => connected = false);
-          _closeRelay();
-          _retryConnect();
-        }
-      },
-      onError: (error) {
-        print(
-          '[!] [join_room_screen.dart | _connectRelays()] | Error: $error',
-        );
-        setState(() => connected = false);
-        _closeRelay();
-        _retryConnect();
-      },
-      cancelOnError: true,
-    );
-
-    await NostrJS.connecteToRelay();
-
-    _connectCompleter.complete();
-
-    setState(() => connected = true);
   }
 
   List<String> parseText(String string) {
@@ -516,15 +448,14 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
     print('[+] Sending to pubkey: $pk2');
 
     try {
-      await NostrJS.sendDm(
-          message, userKeys.privateKey, userKeys.publicKey, pk2);
-      _onPublishSuccess(message);
+      await NostrJS.sendDm(message, userKeys.privateKey, userKeys.publicKey,
+          pk2, allowInterop((msg) => onPublishSuccess(msg)));
     } catch (e) {
       print('[+] sendDm error: $e');
     }
   }
 
-  void _onPublishSuccess(String message) async {
+  void onPublishSuccess(String message) async {
     print('[+] relay has accepted our event');
     List<String> parsedList = parseText(message);
     if (parsedList.first == 'SYN') {
@@ -539,7 +470,7 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
       });
 
       print('[+] Game Loading... | create_room_screen.dart');
-      Future.delayed(const Duration(seconds: 5), () {
+      Future.delayed(const Duration(seconds: 3), () {
         setState(() {});
         _game.startNewGame();
         print('[+] Push to game screen');

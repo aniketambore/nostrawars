@@ -6,12 +6,11 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
-import 'package:nostr/nostr.dart' as NostrDart;
+import 'package:js/js.dart';
 import 'package:nostrawars/features/game/game.dart';
 import 'package:nostrawars/features/main_page/main_page.dart';
 import 'package:nostrawars/component_library/component_library.dart';
 import 'package:nostrawars/nostr/nostr.dart';
-import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:nostrawars/nostr/src/nostr_js.dart' as NostrJS;
 
 class CreateRoomScreen extends StatefulWidget {
@@ -25,8 +24,6 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   final _relayUrl = 'wss://relay.damus.io';
   late KeyPair userKeys;
   final keys = Keys();
-  late WebSocketChannel _relay;
-  late Nip04 _nip04;
   bool connected = false;
 
   bool syn = false;
@@ -39,14 +36,10 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   late final MyGame _game;
   String opponentPlayer = '';
 
-  bool startNewGame = false;
-
-  final Completer<void> _connectCompleter = Completer<void>();
-
-  Future<void> _closeRelay() async {
-    print('[+] main.dart | _ChatScreenState | _closeRelay()');
-    // setState(() => connected = false);
-    await _relay.sink.close();
+  void _closeRelay() {
+    print(
+        '[+] create_room_screen.dart | _CreateRoomScreenState | _closeRelay()');
+    NostrJS.closeRelay();
   }
 
   Future<void> startGame(String gameText) async {
@@ -142,127 +135,73 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
 
   // void _generateKeys() {
   //   print('[+] [_generateKeys() | create_room_screen.dart]');
-  //   sk1 = 'f03b226e0c1dfde7b427971810e3bc366cd6cfbd0d3d822a26b817fcb8ae12e2';
-  //   pk1 = 'b136202de82fb8f21129f3a5a4a3cf96b6d84dc243e80d8dd7c103e5649e1bcb';
+  //   var sk1 =
+  //       'f03b226e0c1dfde7b427971810e3bc366cd6cfbd0d3d822a26b817fcb8ae12e2';
+  //   var pk1 =
+  //       'b136202de82fb8f21129f3a5a4a3cf96b6d84dc243e80d8dd7c103e5649e1bcb';
+  //   userKeys = KeyPair(sk1, pk1, keys.nsecEncode(sk1), keys.npubEncode(pk1));
   //   print("privKey: $sk1\npubkey: $pk1");
   // }
 
-  Future<void> _retryConnect() async {
-    print('[+] [_retryConnect() | create_room_screen.dart]');
-    await Future.delayed(const Duration(seconds: 10));
-    _connectRelays();
+  void connectedCallback() {
+    setState(() => connected = true);
+  }
+
+  void eventReceivedCallback(String plaintext, String opponentPk) {
+    print('[+] event received: plaintext: $plaintext');
+
+    if (plaintext.isNotEmpty) {
+      print('[+] gameStarted: $gameStarted');
+      if (gameStarted) {
+        startGame(plaintext);
+        return;
+      }
+
+      List<String> parsedList = parseText(plaintext);
+      if (parsedList.first == "SYN" && !syn && !synAck && !ack) {
+        print(
+          '[+] [_decrypt() | create_room_screen.dart]: SYN: ${parsedList.last}',
+        );
+        setState(() => syn = true);
+        var bytes = utf8.encode(parsedList.last);
+        var messageToSend = 'SYN-ACK:${sha256.convert(bytes)}';
+        sendDm(messageToSend, opponentPk);
+      } else if (parsedList.first == "ACK" &&
+          parsedList.last == synAckSha &&
+          syn &&
+          synAck) {
+        print(
+          '[+] [_decrypt() | create_room_screen.dart]: ACK: ${parsedList.last}',
+        );
+
+        // await a frame to allow subscribing to a new channel in a realtime callback
+        setState(() {
+          ack = true;
+          gameStarted = true;
+          opponentPlayer = opponentPk;
+        });
+
+        print('[+] Game Loading... | create_room_screen.dart');
+        Future.delayed(const Duration(seconds: 3), () {
+          setState(() {});
+          _game.startNewGame();
+          print('[+] Push to game screen');
+        });
+      }
+    }
   }
 
   void _connectRelays() async {
-    print('[+] [main.dart | _ChatScreenState | _connectRelays()]');
-    _nip04 = Nip04(userKeys.privateKey);
+    print(
+        '[+] [create_room_screen.dart | _CreateRoomScreenState | _connectRelays()]');
 
-    final subscriptionId = NostrDart.generate64RandomHexChars();
-
-    _relay = WebSocketChannel.connect(
-      Uri.parse(_relayUrl),
+    await NostrJS.connectToRelay(
+      allowInterop(() => connectedCallback()),
+      userKeys.privateKey,
+      userKeys.publicKey,
+      allowInterop((plaintext, opponentPk) =>
+          eventReceivedCallback(plaintext, opponentPk)),
     );
-
-    final filter = NostrDart.Request(subscriptionId, [
-      NostrDart.Filter(
-        kinds: [4],
-        p: [userKeys.publicKey],
-        since: NostrDart.currentUnixTimestampSeconds(),
-      ),
-    ]);
-
-    _relay.sink.add(filter.serialize());
-
-    _relay.stream.listen(
-      (payload) async {
-        print(
-          '[+] [main.dart | _ChatScreenState | _connectRelays()] | Received event: $payload',
-        );
-        final message = NostrDart.Message.deserialize(payload);
-
-        if (message.type == 'OK') {
-          print(
-            '[+] [main.dart | __connectRelays()]: message type OK: message: $message',
-          );
-        }
-
-        if (message.type != "EVENT") {
-          return;
-        }
-
-        final event = message.message as NostrDart.Event;
-        print(
-          '[+] [main.dart | _ChatScreenState | _connectRelays()] | Received event from: ${event.pubkey}',
-        );
-
-        try {
-          final plaintext = await _nip04.decryptContent(event);
-          print('[+] plaintext: $plaintext');
-
-          if (plaintext.isNotEmpty) {
-            print('[+] gameStarted: $gameStarted');
-            if (gameStarted) {
-              startGame(plaintext);
-              return;
-            }
-
-            List<String> parsedList = parseText(plaintext);
-            if (parsedList.first == "SYN" && !syn && !synAck && !ack) {
-              print(
-                '[+] [_decrypt() | create_room_screen.dart]: SYN: ${parsedList.last}',
-              );
-              setState(() => syn = true);
-              var bytes = utf8.encode(parsedList.last);
-              var messageToSend = 'SYN-ACK:${sha256.convert(bytes)}';
-              sendDm(messageToSend, event.pubkey);
-            } else if (parsedList.first == "ACK" &&
-                parsedList.last == synAckSha &&
-                syn &&
-                synAck) {
-              print(
-                '[+] [_decrypt() | create_room_screen.dart]: ACK: ${parsedList.last}',
-              );
-
-              // await a frame to allow subscribing to a new channel in a realtime callback
-              setState(() {
-                ack = true;
-                gameStarted = true;
-                opponentPlayer = event.pubkey;
-              });
-
-              print('[+] Game Loading... | create_room_screen.dart');
-              Future.delayed(const Duration(seconds: 5), () {
-                setState(() {});
-                _game.startNewGame();
-                print('[+] Push to game screen');
-              });
-            }
-          }
-        } catch (e) {
-          print(
-            '[!] [main.dart | _ChatScreenState | _connectRelays()] : [Catch: $e]',
-          );
-          setState(() => connected = false);
-          _closeRelay();
-          _retryConnect();
-        }
-      },
-      onError: (error) {
-        print(
-          '[!] [main.dart | _ChatScreenState | _connectRelays()] | Error: $error',
-        );
-        setState(() => connected = false);
-        _closeRelay();
-        _retryConnect();
-      },
-      cancelOnError: true,
-    );
-
-    await NostrJS.connecteToRelay();
-
-    _connectCompleter.complete();
-
-    setState(() => connected = true);
   }
 
   List<String> parseText(String string) {
@@ -334,7 +273,6 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                 // ? gameOn()1
                 : CreateRoomCard(
                     npubEncode: userKeys.publicKeyHr,
-                    relay: _relay,
                   ),
           ),
           const Positioned(
@@ -454,14 +392,6 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     );
   }
 
-  // String get npubEncode => keys.npubEncode(pk1);
-
-  // String get nsecEncode => keys.nsecEncode(sk1);
-
-  // String get npubEncode => NostrJS.npubEncode(pk1);
-
-  // String get nsecEncode => NostrJS.nsecEncode(sk1);
-
   void sendDm(String message, String receiver) async {
     final pk2 = receiver;
 
@@ -470,15 +400,14 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     print('[+] Sending to pubkey: $pk2');
 
     try {
-      await NostrJS.sendDm(
-          message, userKeys.privateKey, userKeys.publicKey, pk2);
-      _onPublishSuccess(message);
+      await NostrJS.sendDm(message, userKeys.privateKey, userKeys.publicKey,
+          pk2, allowInterop((msg) => onPublishSuccess(msg)));
     } catch (e) {
       print('[+] sendDm error: $e');
     }
   }
 
-  void _onPublishSuccess(String message) {
+  void onPublishSuccess(String message) {
     print('[+] relay has accepted our event');
     List<String> parsedList = parseText(message);
     if (parsedList.first == 'SYN-ACK') {
@@ -600,11 +529,9 @@ class CreateRoomCard extends StatelessWidget {
   const CreateRoomCard({
     super.key,
     required this.npubEncode,
-    required this.relay,
   });
 
   final String npubEncode;
-  final WebSocketChannel relay;
 
   @override
   Widget build(BuildContext context) {
@@ -657,7 +584,7 @@ class CreateRoomCard extends StatelessWidget {
                   const SizedBox(height: 16),
                   ExpandedOutlinedButton(
                     onTap: () {
-                      relay.sink.close();
+                      NostrJS.closeRelay();
                       Navigator.pop(context);
                     },
                     label: 'Close',
