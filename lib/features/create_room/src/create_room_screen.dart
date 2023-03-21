@@ -23,12 +23,10 @@ class CreateRoomScreen extends StatefulWidget {
 
 class _CreateRoomScreenState extends State<CreateRoomScreen> {
   final _relayUrl = 'wss://relay.damus.io';
-  KeyPair? userKeys;
+  late KeyPair userKeys;
   final keys = Keys();
   late WebSocketChannel _relay;
   late Nip04 _nip04;
-  // var sk1 = '';
-  // var pk1 = '';
   bool connected = false;
 
   bool syn = false;
@@ -41,13 +39,14 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
   late final MyGame _game;
   String opponentPlayer = '';
 
+  bool startNewGame = false;
+
   final Completer<void> _connectCompleter = Completer<void>();
 
   Future<void> _closeRelay() async {
     print('[+] main.dart | _ChatScreenState | _closeRelay()');
-
+    // setState(() => connected = false);
     await _relay.sink.close();
-    setState(() => connected = false);
   }
 
   Future<void> startGame(String gameText) async {
@@ -72,6 +71,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
             _game.onGameOver(true);
           }
         }
+        await Future.delayed(Duration.zero);
+        setState(() {});
       }
     }
   }
@@ -92,8 +93,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         setState(() {});
       } while (gameStarted && health <= 0 && connected);
     }, onGameOver: (playerWon) async {
-      _closeRelay();
       setState(() => gameStarted = false);
+      _closeRelay();
       await showDialog(
         barrierDismissible: false,
         context: context,
@@ -154,8 +155,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
 
   void _connectRelays() async {
     print('[+] [main.dart | _ChatScreenState | _connectRelays()]');
-    // _nip04 = Nip04(sk1);
-    _nip04 = Nip04(userKeys!.privateKey);
+    _nip04 = Nip04(userKeys.privateKey);
 
     final subscriptionId = NostrDart.generate64RandomHexChars();
 
@@ -166,7 +166,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     final filter = NostrDart.Request(subscriptionId, [
       NostrDart.Filter(
         kinds: [4],
-        p: [userKeys!.publicKey],
+        p: [userKeys.publicKey],
         since: NostrDart.currentUnixTimestampSeconds(),
       ),
     ]);
@@ -180,13 +180,11 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         );
         final message = NostrDart.Message.deserialize(payload);
 
-        // if (message.type == 'OK') {
-        //   print('[+] [main.dart | __connectRelays() | _sendEvent() response]');
-        //   setState(() {
-        //     _msgList.add(messageController.text.trim());
-        //     messageController.clear();
-        //   });
-        // }
+        if (message.type == 'OK') {
+          print(
+            '[+] [main.dart | __connectRelays()]: message type OK: message: $message',
+          );
+        }
 
         if (message.type != "EVENT") {
           return;
@@ -199,11 +197,9 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
 
         try {
           final plaintext = await _nip04.decryptContent(event);
-
           print('[+] plaintext: $plaintext');
 
           if (plaintext.isNotEmpty) {
-            print('[+] Plaintext is $plaintext');
             print('[+] gameStarted: $gameStarted');
             if (gameStarted) {
               startGame(plaintext);
@@ -234,8 +230,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                 opponentPlayer = event.pubkey;
               });
 
+              print('[+] Game Loading... | create_room_screen.dart');
               Future.delayed(const Duration(seconds: 5), () {
-                print('[+] Game Loading... | create_room_screen.dart');
                 setState(() {});
                 _game.startNewGame();
                 print('[+] Push to game screen');
@@ -297,17 +293,6 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     _closeRelay();
   }
 
-  // Widget gameOn() {
-  //   return ElevatedButton(
-  //       onPressed: () {
-  //         sendDm(
-  //           '{"x":45.00,"y":8.23,"health":10}',
-  //           opponentPlayer,
-  //         );
-  //       },
-  //       child: const Text('Game ON'));
-  // }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -348,7 +333,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                 ? GameWidget(game: _game)
                 // ? gameOn()1
                 : CreateRoomCard(
-                    npubEncode: userKeys?.publicKeyHr ?? '',
+                    npubEncode: userKeys.publicKeyHr,
                     relay: _relay,
                   ),
           ),
@@ -380,10 +365,10 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
                     )
                   ],
                 ),
-                (userKeys != null && !gameStarted)
+                (!gameStarted)
                     ? ShowKeys(
-                        npubEncode: userKeys?.publicKeyHr ?? '',
-                        nsecEncode: userKeys?.privateKeyHr ?? '')
+                        npubEncode: userKeys.publicKeyHr,
+                        nsecEncode: userKeys.privateKeyHr)
                     : Container(),
                 TextButton(
                   onPressed: () {
@@ -477,134 +462,21 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
 
   // String get nsecEncode => NostrJS.nsecEncode(sk1);
 
-  /// METHOD 1: sendDM() using dart nostr library
-  // Future<void> sendDm(String message, String receiver) async {
-  // if (connected) {
-  //   final start = DateTime.now();
-
-  //   if (message.trim().isEmpty) return;
-
-  //   final pk2 = receiver;
-  //   print('[+] Sending to pubkey: $pk2');
-
-  //   final ciphertext = _nip04.encrypt(pk2, message);
-  //   print('[+] ciphertext: $ciphertext');
-
-  //     // Event event = Event.from(
-  //     //   kind: 4,
-  //     //   tags: [
-  //     //     ['p', pk2]
-  //     //   ],
-  //     //   content: ciphertext,
-  //     //   privkey: sk1,
-  //     //   createdAt: currentUnixTimestampSeconds(),
-  //     // );
-
-  //     NostrDart.Event event = NostrDart.Event.partial(
-  //       kind: 4,
-  //       tags: [
-  //         ['p', pk2]
-  //       ],
-  //       content: ciphertext,
-  //       pubkey: pk1,
-  //       createdAt: NostrDart.currentUnixTimestampSeconds(),
-  //     );
-
-  //     event.id = event.getEventId();
-  //     event.sig = event.getSignature(sk1);
-
-  //     var end = DateTime.now();
-  //     var time = end.difference(start);
-  //     print('[!] Got the event now $time!');
-
-  //     await _sendEvent(event, message);
-  //   }
-  // }
-
-  // Future<void> _sendEvent(NostrDart.Event event, String message) async {
-  // try {
-  //   _relay.sink.add(event.serialize());
-
-  //   _onPublishSuccess(message);
-  // } catch (e) {
-  //   print(
-  //     '[!] [create_room_screen.dart | _CreateRoomScreenState | _sendEvent()]',
-  //   );
-  // }
-  // }
-
-  // void _onPublishSuccess(String message) {
-  //   print('[+] _onPublishSuccess | relay has accepted our event');
-  //   if (!synAck) {
-  //     List<String> parsedList = parseText(message);
-  //     if (parsedList.first == 'SYN-ACK') {
-  //       setState(() {
-  //         synAck = true;
-  //         synAckSha = parsedList.last;
-  //       });
-  //     }
-  //   }
-  // }
-
-  /// METHOD 2: sendDM() using js nostr library (interop)
-  // Future<String> _encryptMessage(String message, String publicKey) async {
-  //   final completer = Completer<String>();
-
-  //   allowInterop(() {
-  //     NostrTools.nip04
-  //         .encrypt(sk1, publicKey, message)
-  //         .then(allowInterop((result) {
-  //       completer.complete(result);
-  //     }));
-  //   })();
-
-  //   return completer.future;
-  // }
-
   void sendDm(String message, String receiver) async {
     final pk2 = receiver;
 
     if (message.trim().isEmpty) return;
 
     print('[+] Sending to pubkey: $pk2');
-    // final ciphertext = await _encryptMessage(message, pk2);
 
-    // print('[+] ciphertext: $ciphertext');
-
-    // final event = Event(
-    //   kind: 4,
-    //   pubkey: pk1,
-    //   tags: [
-    //     ['p', pk2]
-    //   ],
-    //   content: ciphertext,
-    //   created_at: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-    // );
-
-    // sendEvent(event, message);
     try {
-      // await NostrJS.sendDm(message, sk1, pk1, pk2);
       await NostrJS.sendDm(
-          message, userKeys!.privateKey, userKeys!.publicKey, pk2);
+          message, userKeys.privateKey, userKeys.publicKey, pk2);
       _onPublishSuccess(message);
     } catch (e) {
       print('[+] sendDm error: $e');
     }
   }
-
-  // void sendEvent(Event event, String message) {
-  //   event.id = NostrTools.getEventHash(event);
-  //   event.sig = NostrTools.signEvent(event, sk1);
-
-  //   final pub = _jsRelay.publish(event);
-  //   pub.on('ok', allowInterop(() {
-  //     _onPublishSuccess(message);
-  //   }));
-
-  //   pub.on('failed', allowInterop((reason) {
-  //     print('[+] failed to publish to relay: $reason');
-  //   }));
-  // }
 
   void _onPublishSuccess(String message) {
     print('[+] relay has accepted our event');
@@ -616,55 +488,6 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
       });
     }
   }
-
-  /// METHOD 3: sendDM() using custom sign methods
-  // void sendDm(String message, String receiver) async {
-  //   if (connected) {
-  //     final start = DateTime.now();
-
-  //     if (message.trim().isEmpty) return;
-
-  //     final pk2 = receiver;
-  //     print('[+] Sending to pubkey: $pk2');
-
-  //     final ciphertext = _nip04.encrypt(pk2, message);
-  //     print('[+] ciphertext: $ciphertext');
-
-  //     String strTags = '["p","$pk2"]';
-  //     int createdAt = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-
-  //     String id =
-  //         _nip04.getShaId(pk1, createdAt.toString(), "4", strTags, ciphertext);
-  //     String sig = _nip04.mySign(sk1, id);
-  //     String eventStrToSend =
-  //         '["EVENT",{"id":"$id","pubkey":"$pk1","created_at":$createdAt,"kind":4,"tags":[$strTags],"content":"$ciphertext","sig":"$sig"}]';
-
-  //     _sendEvent(eventStrToSend, message);
-  //   }
-  // }
-
-  // Future<void> _sendEvent(String event, String message) async {
-  //   try {
-  //     _relay.sink.add(event);
-
-  //     _onPublishSuccess(message);
-  //   } catch (e) {
-  //     print(
-  //       '[!] [create_room_screen.dart | _CreateRoomScreenState | _sendEvent()]',
-  //     );
-  //   }
-  // }
-
-  // void _onPublishSuccess(String message) {
-  //   print('[+] relay has accepted our event');
-  //   List<String> parsedList = parseText(message);
-  //   if (parsedList.first == 'SYN-ACK') {
-  //     setState(() {
-  //       synAck = true;
-  //       synAckSha = parsedList.last;
-  //     });
-  //   }
-  // }
 }
 
 class ShowKeys extends StatelessWidget {

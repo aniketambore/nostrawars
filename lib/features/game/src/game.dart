@@ -109,7 +109,7 @@ class MyGame extends FlameGame with PanDetector, HasCollisionDetection {
   ///
   /// Calls itself every 500 milliseconds
   Future<void> _shootBullets() async {
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 1000));
 
     /// Player's bullet
     final playerBulletInitialPosition = Vector2.copy(_player.position)
