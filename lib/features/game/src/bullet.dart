@@ -2,7 +2,7 @@ import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame/image_composition.dart' as flame_image;
 
-class Bullet extends PositionComponent with CollisionCallbacks, HasGameRef {
+class Bullet extends PositionComponent with HasGameRef, CollisionCallbacks {
   final Vector2 velocity;
 
   final flame_image.Image image;

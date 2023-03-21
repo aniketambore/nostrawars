@@ -126,4 +126,9 @@ class KeyPair {
         json['privateKeyHr'],
         json['publicKeyHr'],
       );
+
+  @override
+  String toString() {
+    return 'sk: $privateKey, pk: $publicKey, nsec: $privateKeyHr, npub: $publicKeyHr';
+  }
 }

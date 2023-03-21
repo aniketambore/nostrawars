@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
 
+import 'package:bip340/bip340.dart';
+import 'package:crypto/crypto.dart';
 import 'package:kepler/kepler.dart';
 import 'package:nostr/nostr.dart';
 import 'package:pointycastle/export.dart';
@@ -111,6 +113,37 @@ class Nip04 {
       print('[!] Line:133 | _encryptRaw() | nip04.dart | e:$e');
       rethrow;
     }
+  }
+
+  String getShaId(String pubkey, String createdAt, String kind, String strTags,
+      String content) {
+    String buf = '[0,"$pubkey",$createdAt,$kind,[$strTags],"$content"]';
+    var bufInBytes = utf8.encode(buf);
+    var value = sha256.convert(bufInBytes);
+    return value.toString();
+  }
+
+  String mySign(String privateKey, String msg) {
+    String randomSeed = getRandomPrivKey();
+    randomSeed = randomSeed.substring(0, 32);
+    return sign(privateKey, msg, randomSeed);
+  }
+
+  String getRandomPrivKey() {
+    FortunaRandom fr = FortunaRandom();
+    final sGen = Random.secure();
+    fr.seed(KeyParameter(
+        Uint8List.fromList(List.generate(32, (_) => sGen.nextInt(255)))));
+
+    BigInt randomNumber = fr.nextBigInteger(256);
+    String strKey = randomNumber.toRadixString(16);
+    if (strKey.length < 64) {
+      int numZeros = 64 - strKey.length;
+      for (int i = 0; i < numZeros; i++) {
+        strKey = "0$strKey";
+      }
+    }
+    return strKey;
   }
 }
 

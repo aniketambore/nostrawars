@@ -4,7 +4,6 @@ import 'package:flame/game.dart';
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/image_composition.dart' as flame_image;
-import 'package:flame_audio/flame_audio.dart';
 import 'package:flutter/material.dart';
 
 import 'player.dart';
@@ -47,9 +46,6 @@ class MyGame extends FlameGame with PanDetector, HasCollisionDetection {
 
   @override
   Future<void>? onLoad() async {
-    FlameAudio.bgm.initialize();
-    FlameAudio.bgm.play('Intesification.ogg');
-
     final playerImage = await images.load('player.png');
     _player = Player(isMe: true);
     final spriteSize = Vector2.all(Player.radius * 2);
@@ -65,12 +61,6 @@ class MyGame extends FlameGame with PanDetector, HasCollisionDetection {
     _opponentBulletImage = await images.load('opponent-bullet.png');
 
     await super.onLoad();
-  }
-
-  @override
-  void onDetach() {
-    FlameAudio.bgm.stop();
-    super.onDetach();
   }
 
   @override
@@ -119,7 +109,7 @@ class MyGame extends FlameGame with PanDetector, HasCollisionDetection {
   ///
   /// Calls itself every 500 milliseconds
   Future<void> _shootBullets() async {
-    await Future.delayed(const Duration(milliseconds: 1000));
+    await Future.delayed(const Duration(milliseconds: 500));
 
     /// Player's bullet
     final playerBulletInitialPosition = Vector2.copy(_player.position)
