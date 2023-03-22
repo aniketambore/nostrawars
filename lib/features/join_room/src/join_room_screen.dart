@@ -111,7 +111,7 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
     });
 
     // await for a frame so that the widget mounts
-    await Future.delayed(Duration.zero);
+    // await Future.delayed(Duration.zero);
   }
 
   @override
@@ -470,11 +470,14 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
       });
 
       print('[+] Game Loading... | create_room_screen.dart');
-      Future.delayed(const Duration(seconds: 3), () {
-        setState(() {});
-        _game.startNewGame();
-        print('[+] Push to game screen');
-      });
+      // Future.delayed(const Duration(seconds: 3), () {
+      //   setState(() {});
+      //   _game.startNewGame();
+      //   print('[+] Push to game screen');
+      // });
+      await Future.delayed(Duration.zero);
+      setState(() {});
+      _game.startNewGame();
     }
   }
 }

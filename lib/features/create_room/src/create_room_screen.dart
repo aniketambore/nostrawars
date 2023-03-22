@@ -64,8 +64,8 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
             _game.onGameOver(true);
           }
         }
-        await Future.delayed(Duration.zero);
-        setState(() {});
+        // await Future.delayed(Duration.zero);
+        // setState(() {});
       }
     }
   }
@@ -113,7 +113,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
       );
     });
     // await for a frame so that the widget mounts
-    await Future.delayed(Duration.zero);
+    // await Future.delayed(Duration.zero);
   }
 
   @override
@@ -147,7 +147,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     setState(() => connected = true);
   }
 
-  void eventReceivedCallback(String plaintext, String opponentPk) {
+  void eventReceivedCallback(String plaintext, String opponentPk) async {
     print('[+] event received: plaintext: $plaintext');
 
     if (plaintext.isNotEmpty) {
@@ -182,11 +182,14 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         });
 
         print('[+] Game Loading... | create_room_screen.dart');
-        Future.delayed(const Duration(seconds: 3), () {
-          setState(() {});
-          _game.startNewGame();
-          print('[+] Push to game screen');
-        });
+        // Future.delayed(const Duration(seconds: 3), () {
+        //   setState(() {});
+        //   _game.startNewGame();
+        //   print('[+] Push to game screen');
+        // });
+        await Future.delayed(Duration.zero);
+        setState(() {});
+        _game.startNewGame();
       }
     }
   }
