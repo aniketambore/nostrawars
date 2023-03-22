@@ -187,7 +187,7 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
         //   _game.startNewGame();
         //   print('[+] Push to game screen');
         // });
-        await Future.delayed(Duration.zero);
+        await Future.delayed(const Duration(seconds: 3));
         setState(() {});
         _game.startNewGame();
       }
