@@ -1,21 +1,78 @@
 import 'package:flutter/material.dart';
 import 'package:nostrawars/component_library/component_library.dart';
-import 'package:nostrawars/features/pay_invoice/pay_invoice.dart';
+import 'package:nostrawars/features/main_page/src/main_page_screen.dart';
+import 'package:nostrawars/lnbits_api/lnbits_api.dart';
 
-class MainPageScreen extends StatefulWidget {
-  const MainPageScreen({super.key});
+class WithdrawSatsScreen extends StatefulWidget {
+  const WithdrawSatsScreen({
+    super.key,
+    required this.winnerNpub,
+  });
+  final String winnerNpub;
 
   @override
-  State<MainPageScreen> createState() => _MainPageScreenState();
+  State<WithdrawSatsScreen> createState() => _WithdrawSatsScreenState();
 }
 
-class _MainPageScreenState extends State<MainPageScreen> {
+class _WithdrawSatsScreenState extends State<WithdrawSatsScreen> {
+  Future<WithdrawLinkRM>? _futureWithdrawLink;
+
+  FutureBuilder<WithdrawLinkRM> buildWithdrawLinkQr() {
+    return FutureBuilder<WithdrawLinkRM>(
+      future: _futureWithdrawLink,
+      builder: (context, snapshot) {
+        if (snapshot.hasData) {
+          return Column(
+            children: [
+              QrCard(qrData: snapshot.data!.lnurl),
+              const SizedBox(height: 20),
+              const Text(
+                'Scan the QR code above to claim your prize!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 20,
+                  color: flamingo,
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'If you fail to claim your prize using the LNURL withdraw invoice provided above, your sats will be considered a contribution to nostrawars. Thank you for participating!',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  color: flamingo,
+                ),
+              ),
+            ],
+          );
+        } else if (snapshot.hasError) {
+          return const Icon(Icons.error);
+        }
+
+        return const CircularProgressIndicator();
+      },
+    );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _futureWithdrawLink = LNBitsApi.createWithdrawLink(
+      title: widget.winnerNpub,
+      minWithdrawable: 10,
+      maxWithdrawable: 20,
+      uses: 1,
+      waitTime: 10,
+      isUnique: true,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GameCursor(
       child: Scaffold(
         body: Stack(
-          children: <Widget>[
+          children: [
             Container(
               decoration: const BoxDecoration(
                 image: DecorationImage(
@@ -50,7 +107,7 @@ class _MainPageScreenState extends State<MainPageScreen> {
               child: Center(
                 child: ResponsiveBuilder(
                   maxWidth: 768,
-                  maxHeight: 503,
+                  maxHeight: 553,
                   child: SingleChildScrollView(
                     child: Card(
                       elevation: 8,
@@ -67,62 +124,22 @@ class _MainPageScreenState extends State<MainPageScreen> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Image.asset(
-                              'assets/images/player.png',
-                              width: 64,
-                              height: 64,
-                            ),
-                            const SizedBox(height: 16),
                             Text(
-                              'Nostrawars',
+                              'Winner winner, sats for dinner!',
                               style: TextStyle(
                                 fontSize: FontSize.large,
                                 fontWeight: FontWeight.bold,
-                                fontFamily: 'Montserrat',
-                                color: Colors.white,
                                 shadows: [
                                   Shadow(
                                     blurRadius: 4,
-                                    color: Colors.white.withOpacity(0.8),
+                                    color: white.withOpacity(0.8),
                                     offset: const Offset(0, 2),
                                   ),
                                 ],
                               ),
                             ),
                             const SizedBox(height: 16),
-                            ExpandedElevatedButton(
-                              label: 'Create Room',
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const PayInvoiceScreen(
-                                      action: "Create Room",
-                                    ),
-                                    // builder: (context) =>
-                                    //     const CreateRoomScreen(),
-                                  ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            ExpandedOutlinedButton(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const PayInvoiceScreen(
-                                      action: "Join Room",
-                                    ),
-                                    // builder: (context) =>
-                                    //     const JoinRoomScreen(),
-                                  ),
-                                );
-                              },
-                              label: 'Join Room',
-                            ),
+                            buildWithdrawLinkQr(),
                           ],
                         ),
                       ),
@@ -131,11 +148,24 @@ class _MainPageScreenState extends State<MainPageScreen> {
                 ),
               ),
             ),
-            const Positioned(
-              bottom: 10,
-              right: 10,
-              child: Text('Made for #NostHack'),
-            ),
+            Positioned(
+              left: 10,
+              top: 10,
+              child: SizedBox(
+                width: 210,
+                child: ExpandedElevatedButton(
+                  label: 'Back to main',
+                  onTap: () async {
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const MainPageScreen()),
+                      (route) => false,
+                    );
+                  },
+                ),
+              ),
+            )
           ],
         ),
       ),

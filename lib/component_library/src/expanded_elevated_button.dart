@@ -46,6 +46,7 @@ class ExpandedElevatedButton extends StatelessWidget {
               ),
               icon: icon,
               style: ElevatedButton.styleFrom(
+                enabledMouseCursor: MouseCursor.defer,
                 backgroundColor: color,
               ),
             )
@@ -55,6 +56,7 @@ class ExpandedElevatedButton extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: onTap,
                 style: ElevatedButton.styleFrom(
+                  enabledMouseCursor: MouseCursor.defer,
                   backgroundColor: color,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16.0),

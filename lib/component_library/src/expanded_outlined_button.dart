@@ -38,6 +38,7 @@ class ExpandedOutlinedButton extends StatelessWidget {
           ? OutlinedButton.icon(
               onPressed: onTap,
               style: ElevatedButton.styleFrom(
+                enabledMouseCursor: MouseCursor.defer,
                 side: const BorderSide(
                   color: black,
                   width: 2.0,
@@ -59,6 +60,7 @@ class ExpandedOutlinedButton extends StatelessWidget {
           : OutlinedButton(
               onPressed: onTap,
               style: ElevatedButton.styleFrom(
+                enabledMouseCursor: MouseCursor.defer,
                 side: const BorderSide(
                   width: 2.0,
                   color: white,

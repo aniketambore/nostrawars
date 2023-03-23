@@ -10,6 +10,7 @@ import 'package:js/js.dart';
 import 'package:nostrawars/component_library/component_library.dart';
 import 'package:nostrawars/features/game/game.dart';
 import 'package:nostrawars/features/main_page/main_page.dart';
+import 'package:nostrawars/features/withdraw_sats/withdraw_sats.dart';
 import 'package:nostrawars/nostr/nostr.dart';
 import 'package:nostrawars/nostr/src/nostr_js.dart' as NostrJS;
 
@@ -83,31 +84,43 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
       } while (gameStarted && health <= 0);
     }, onGameOver: (playerWon) async {
       setState(() => gameStarted = false);
-
       _closeRelay();
-      await showDialog(
-        barrierDismissible: false,
-        context: context,
-        builder: ((context) {
-          return AlertDialog(
-            title: Text(playerWon ? 'You Won!' : 'You lost...'),
-            actions: [
-              TextButton(
-                onPressed: () async {
-                  _closeRelay();
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const MainPageScreen(),
-                    ),
-                  );
-                },
-                child: const Text('Back to Lobby'),
-              ),
-            ],
-          );
-        }),
-      );
+      if (playerWon) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WithdrawSatsScreen(
+              winnerNpub: userKeys.publicKeyHr,
+            ),
+          ),
+        );
+      } else {
+        await showDialog(
+          barrierDismissible: false,
+          context: context,
+          builder: ((context) {
+            return AlertDialog(
+              title: const Text(
+                  "You have been defeated, but don't give up, the Nostrawars galaxy needs you!"),
+              actions: [
+                TextButton(
+                  onPressed: () async {
+                    _closeRelay();
+                    Navigator.of(context).pop();
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const MainPageScreen()),
+                      (route) => false,
+                    );
+                  },
+                  child: const Text('Back to Lobby'),
+                ),
+              ],
+            );
+          }),
+        );
+      }
     });
 
     // await for a frame so that the widget mounts
@@ -213,221 +226,224 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: <Widget>[
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/bg/1.png"),
-                fit: BoxFit.cover,
+    return GameCursor(
+      child: Scaffold(
+        body: Stack(
+          children: <Widget>[
+            Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage("assets/bg/1.png"),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-          ),
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/bg/2.png"),
-                fit: BoxFit.cover,
+            Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage("assets/bg/2.png"),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-          ),
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/bg/3.png"),
-                fit: BoxFit.cover,
+            Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage("assets/bg/3.png"),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-          ),
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/bg/4.png"),
-                fit: BoxFit.cover,
+            Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage("assets/bg/4.png"),
+                  fit: BoxFit.cover,
+                ),
               ),
-            ),
-            child: gameStarted
-                ? GameWidget(game: _game)
-                // ? gameOn()
-                : Center(
-                    child: ResponsiveBuilder(
-                      maxWidth: 768,
-                      maxHeight: 503,
-                      child: SingleChildScrollView(
-                        child: Card(
-                          elevation: 8,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            side: const BorderSide(
-                              color: athens,
-                              width: 2,
+              child: gameStarted
+                  ? GameWidget(game: _game)
+                  // ? gameOn()
+                  : Center(
+                      child: ResponsiveBuilder(
+                        maxWidth: 768,
+                        maxHeight: 503,
+                        child: SingleChildScrollView(
+                          child: Card(
+                            elevation: 8,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              side: const BorderSide(
+                                color: athens,
+                                width: 2,
+                              ),
                             ),
-                          ),
-                          margin: const EdgeInsets.symmetric(horizontal: 32),
-                          child: Padding(
-                            padding: const EdgeInsets.all(32),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: <Widget>[
-                                Text(
-                                  'Join Room',
-                                  style: TextStyle(
-                                    fontSize: FontSize.large,
-                                    fontWeight: FontWeight.bold,
-                                    shadows: [
-                                      Shadow(
-                                        blurRadius: 4,
-                                        color: white.withOpacity(0.8),
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
+                            margin: const EdgeInsets.symmetric(horizontal: 32),
+                            child: Padding(
+                              padding: const EdgeInsets.all(32),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  Text(
+                                    'Join Room',
+                                    style: TextStyle(
+                                      fontSize: FontSize.large,
+                                      fontWeight: FontWeight.bold,
+                                      shadows: [
+                                        Shadow(
+                                          blurRadius: 4,
+                                          color: white.withOpacity(0.8),
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 16),
-                                GameTextField(
-                                  hintText: 'Enter npub',
-                                  iconPath: 'assets/icons/nostr.svg',
-                                  controller: npubController,
-                                ),
-                                const SizedBox(height: Spacing.xLarge),
-                                (!syn)
-                                    ? ExpandedOutlinedButton(
-                                        onTap: () => submit(),
-                                        label: 'Join Room',
-                                      )
-                                    : ExpandedElevatedButton.inProgress(
-                                        label: 'Join Room',
-                                      ),
-                                const SizedBox(height: 16),
-                                ExpandedElevatedButton(
-                                  onTap: () {
-                                    _closeRelay();
-                                    Navigator.pop(context);
-                                  },
-                                  label: 'Back to main',
-                                ),
-                              ],
+                                  const SizedBox(height: 24),
+                                  GameTextField(
+                                    hintText: 'Enter npub',
+                                    iconPath: 'assets/icons/nostr.svg',
+                                    controller: npubController,
+                                  ),
+                                  // const SizedBox(height: Spacing.xLarge),
+                                  const SizedBox(height: 24),
+                                  (!syn)
+                                      ? ExpandedOutlinedButton(
+                                          onTap: () => submit(),
+                                          label: 'Join Room',
+                                        )
+                                      : ExpandedElevatedButton.inProgress(
+                                          label: 'Joining...',
+                                        ),
+                                  const SizedBox(height: 16),
+                                  ExpandedElevatedButton(
+                                    onTap: () {
+                                      _closeRelay();
+                                      Navigator.pop(context);
+                                    },
+                                    label: 'Back to main menu',
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
+            ),
+            const Positioned(
+              bottom: 10,
+              right: 10,
+              child: Text('Made for #NostHack'),
+            ),
+            Positioned(
+              right: 10,
+              top: 10,
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      CircleWidget(
+                        borderColor: white,
+                        shadowColor: santasGray10,
+                        bgColor: connected ? carribeanGreen : flamingo,
+                      ),
+                      const SizedBox(
+                        width: Spacing.small,
+                      ),
+                      const Text(
+                        'wss://relay.damus.io',
+                        style: TextStyle(
+                          fontSize: FontSize.medium,
+                        ),
+                      )
+                    ],
                   ),
-          ),
-          const Positioned(
-            bottom: 10,
-            right: 10,
-            child: Text('Made for #NostHack'),
-          ),
-          Positioned(
-            right: 10,
-            top: 10,
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    CircleWidget(
-                      borderColor: white,
-                      shadowColor: santasGray10,
-                      bgColor: connected ? carribeanGreen : flamingo,
-                    ),
-                    const SizedBox(
-                      width: Spacing.small,
-                    ),
-                    const Text(
-                      'wss://relay.damus.io',
-                      style: TextStyle(
-                        fontSize: FontSize.medium,
-                      ),
-                    )
-                  ],
-                ),
-                (!gameStarted)
-                    ? ShowKeys(
-                        npubEncode: userKeys.publicKeyHr,
-                        nsecEncode: userKeys.privateKeyHr)
-                    : Container(),
-                TextButton(
-                  onPressed: () {
-                    _closeRelay();
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Close'),
-                ),
-              ],
+                  (!gameStarted)
+                      ? ShowKeys(
+                          npubEncode: userKeys.publicKeyHr,
+                          nsecEncode: userKeys.privateKeyHr)
+                      : Container(),
+                  TextButton(
+                    onPressed: () {
+                      _closeRelay();
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Close'),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Positioned(
-            left: 10,
-            top: 10,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    CircleWidget(
-                      borderColor: white,
-                      shadowColor: santasGray10,
-                      bgColor: syn ? carribeanGreen : flamingo,
-                    ),
-                    const SizedBox(
-                      width: Spacing.small,
-                    ),
-                    const Text(
-                      'SYN',
-                      style: TextStyle(
-                        fontSize: FontSize.medium,
+            Positioned(
+              left: 10,
+              top: 10,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      CircleWidget(
+                        borderColor: white,
+                        shadowColor: santasGray10,
+                        bgColor: syn ? carribeanGreen : flamingo,
                       ),
-                    )
-                  ],
-                ),
-                const SizedBox(
-                  height: Spacing.small,
-                ),
-                Row(
-                  children: [
-                    CircleWidget(
-                      borderColor: white,
-                      shadowColor: santasGray10,
-                      bgColor: synAck ? carribeanGreen : flamingo,
-                    ),
-                    const SizedBox(
-                      width: Spacing.small,
-                    ),
-                    const Text(
-                      'SYN-ACK',
-                      style: TextStyle(
-                        fontSize: FontSize.medium,
+                      const SizedBox(
+                        width: Spacing.small,
                       ),
-                    )
-                  ],
-                ),
-                const SizedBox(
-                  height: Spacing.small,
-                ),
-                Row(
-                  children: [
-                    CircleWidget(
-                      borderColor: white,
-                      shadowColor: santasGray10,
-                      bgColor: ack ? carribeanGreen : flamingo,
-                    ),
-                    const SizedBox(
-                      width: Spacing.small,
-                    ),
-                    const Text(
-                      'ACK',
-                      style: TextStyle(
-                        fontSize: FontSize.medium,
+                      const Text(
+                        'SYN',
+                        style: TextStyle(
+                          fontSize: FontSize.medium,
+                        ),
+                      )
+                    ],
+                  ),
+                  const SizedBox(
+                    height: Spacing.small,
+                  ),
+                  Row(
+                    children: [
+                      CircleWidget(
+                        borderColor: white,
+                        shadowColor: santasGray10,
+                        bgColor: synAck ? carribeanGreen : flamingo,
                       ),
-                    )
-                  ],
-                )
-              ],
+                      const SizedBox(
+                        width: Spacing.small,
+                      ),
+                      const Text(
+                        'SYN-ACK',
+                        style: TextStyle(
+                          fontSize: FontSize.medium,
+                        ),
+                      )
+                    ],
+                  ),
+                  const SizedBox(
+                    height: Spacing.small,
+                  ),
+                  Row(
+                    children: [
+                      CircleWidget(
+                        borderColor: white,
+                        shadowColor: santasGray10,
+                        bgColor: ack ? carribeanGreen : flamingo,
+                      ),
+                      const SizedBox(
+                        width: Spacing.small,
+                      ),
+                      const Text(
+                        'ACK',
+                        style: TextStyle(
+                          fontSize: FontSize.medium,
+                        ),
+                      )
+                    ],
+                  )
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

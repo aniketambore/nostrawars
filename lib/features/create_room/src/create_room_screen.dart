@@ -6,10 +6,12 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:js/js.dart';
 import 'package:nostrawars/features/game/game.dart';
 import 'package:nostrawars/features/main_page/main_page.dart';
 import 'package:nostrawars/component_library/component_library.dart';
+import 'package:nostrawars/features/withdraw_sats/withdraw_sats.dart';
 import 'package:nostrawars/nostr/nostr.dart';
 import 'package:nostrawars/nostr/src/nostr_js.dart' as NostrJS;
 
@@ -88,29 +90,42 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
     }, onGameOver: (playerWon) async {
       setState(() => gameStarted = false);
       _closeRelay();
-      await showDialog(
-        barrierDismissible: false,
-        context: context,
-        builder: ((context) {
-          return AlertDialog(
-            title: Text(playerWon ? 'You Won!' : 'You lost...'),
-            actions: [
-              TextButton(
-                onPressed: () async {
-                  _closeRelay();
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const MainPageScreen(),
-                    ),
-                  );
-                },
-                child: const Text('Back to Lobby'),
-              ),
-            ],
-          );
-        }),
-      );
+      if (playerWon) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => WithdrawSatsScreen(
+              winnerNpub: userKeys.publicKeyHr,
+            ),
+          ),
+        );
+      } else {
+        await showDialog(
+          barrierDismissible: false,
+          context: context,
+          builder: ((context) {
+            return AlertDialog(
+              title: const Text(
+                  "You have been defeated, but don't give up, the Nostrawars galaxy needs you!"),
+              actions: [
+                TextButton(
+                  onPressed: () async {
+                    _closeRelay();
+                    Navigator.of(context).pop();
+                    Navigator.pushAndRemoveUntil(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const MainPageScreen()),
+                      (route) => false,
+                    );
+                  },
+                  child: const Text('Back to Lobby'),
+                ),
+              ],
+            );
+          }),
+        );
+      }
     });
     // await for a frame so that the widget mounts
     // await Future.delayed(Duration.zero);
@@ -237,160 +252,162 @@ class _CreateRoomScreenState extends State<CreateRoomScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: <Widget>[
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/bg/1.png"),
-                fit: BoxFit.cover,
+    return GameCursor(
+      child: Scaffold(
+        body: Stack(
+          children: <Widget>[
+            Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage("assets/bg/1.png"),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-          ),
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/bg/2.png"),
-                fit: BoxFit.cover,
+            Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage("assets/bg/2.png"),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-          ),
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/bg/3.png"),
-                fit: BoxFit.cover,
+            Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage("assets/bg/3.png"),
+                  fit: BoxFit.cover,
+                ),
               ),
             ),
-          ),
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/bg/4.png"),
-                fit: BoxFit.cover,
+            Container(
+              decoration: const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage("assets/bg/4.png"),
+                  fit: BoxFit.cover,
+                ),
               ),
+              child: gameStarted
+                  ? GameWidget(game: _game)
+                  // ? gameOn()1
+                  : CreateRoomCard(
+                      npubEncode: userKeys.publicKeyHr,
+                    ),
             ),
-            child: gameStarted
-                ? GameWidget(game: _game)
-                // ? gameOn()1
-                : CreateRoomCard(
-                    npubEncode: userKeys.publicKeyHr,
+            const Positioned(
+              bottom: 10,
+              right: 10,
+              child: Text('Made for #NostHack'),
+            ),
+            Positioned(
+              right: 10,
+              top: 10,
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      CircleWidget(
+                        borderColor: white,
+                        shadowColor: santasGray10,
+                        bgColor: connected ? carribeanGreen : flamingo,
+                      ),
+                      const SizedBox(
+                        width: Spacing.small,
+                      ),
+                      Text(
+                        _relayUrl,
+                        style: const TextStyle(
+                          fontSize: FontSize.medium,
+                        ),
+                      )
+                    ],
                   ),
-          ),
-          const Positioned(
-            bottom: 10,
-            right: 10,
-            child: Text('Made for #NostHack'),
-          ),
-          Positioned(
-            right: 10,
-            top: 10,
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    CircleWidget(
-                      borderColor: white,
-                      shadowColor: santasGray10,
-                      bgColor: connected ? carribeanGreen : flamingo,
-                    ),
-                    const SizedBox(
-                      width: Spacing.small,
-                    ),
-                    Text(
-                      _relayUrl,
-                      style: const TextStyle(
-                        fontSize: FontSize.medium,
-                      ),
-                    )
-                  ],
-                ),
-                (!gameStarted)
-                    ? ShowKeys(
-                        npubEncode: userKeys.publicKeyHr,
-                        nsecEncode: userKeys.privateKeyHr)
-                    : Container(),
-                TextButton(
-                  onPressed: () {
-                    _closeRelay();
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Close'),
-                ),
-              ],
+                  (!gameStarted)
+                      ? ShowKeys(
+                          npubEncode: userKeys.publicKeyHr,
+                          nsecEncode: userKeys.privateKeyHr)
+                      : Container(),
+                  TextButton(
+                    onPressed: () {
+                      _closeRelay();
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Close'),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Positioned(
-            left: 10,
-            top: 10,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    CircleWidget(
-                      borderColor: white,
-                      shadowColor: santasGray10,
-                      bgColor: syn ? carribeanGreen : flamingo,
-                    ),
-                    const SizedBox(
-                      width: Spacing.small,
-                    ),
-                    const Text(
-                      'SYN',
-                      style: TextStyle(
-                        fontSize: FontSize.medium,
+            Positioned(
+              left: 10,
+              top: 10,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      CircleWidget(
+                        borderColor: white,
+                        shadowColor: santasGray10,
+                        bgColor: syn ? carribeanGreen : flamingo,
                       ),
-                    )
-                  ],
-                ),
-                const SizedBox(
-                  height: Spacing.small,
-                ),
-                Row(
-                  children: [
-                    CircleWidget(
-                      borderColor: white,
-                      shadowColor: santasGray10,
-                      bgColor: synAck ? carribeanGreen : flamingo,
-                    ),
-                    const SizedBox(
-                      width: Spacing.small,
-                    ),
-                    const Text(
-                      'SYN-ACK',
-                      style: TextStyle(
-                        fontSize: FontSize.medium,
+                      const SizedBox(
+                        width: Spacing.small,
                       ),
-                    )
-                  ],
-                ),
-                const SizedBox(
-                  height: Spacing.small,
-                ),
-                Row(
-                  children: [
-                    CircleWidget(
-                      borderColor: white,
-                      shadowColor: santasGray10,
-                      bgColor: ack ? carribeanGreen : flamingo,
-                    ),
-                    const SizedBox(
-                      width: Spacing.small,
-                    ),
-                    const Text(
-                      'ACK',
-                      style: TextStyle(
-                        fontSize: FontSize.medium,
+                      const Text(
+                        'SYN',
+                        style: TextStyle(
+                          fontSize: FontSize.medium,
+                        ),
+                      )
+                    ],
+                  ),
+                  const SizedBox(
+                    height: Spacing.small,
+                  ),
+                  Row(
+                    children: [
+                      CircleWidget(
+                        borderColor: white,
+                        shadowColor: santasGray10,
+                        bgColor: synAck ? carribeanGreen : flamingo,
                       ),
-                    )
-                  ],
-                )
-              ],
+                      const SizedBox(
+                        width: Spacing.small,
+                      ),
+                      const Text(
+                        'SYN-ACK',
+                        style: TextStyle(
+                          fontSize: FontSize.medium,
+                        ),
+                      )
+                    ],
+                  ),
+                  const SizedBox(
+                    height: Spacing.small,
+                  ),
+                  Row(
+                    children: [
+                      CircleWidget(
+                        borderColor: white,
+                        shadowColor: santasGray10,
+                        bgColor: ack ? carribeanGreen : flamingo,
+                      ),
+                      const SizedBox(
+                        width: Spacing.small,
+                      ),
+                      const Text(
+                        'ACK',
+                        style: TextStyle(
+                          fontSize: FontSize.medium,
+                        ),
+                      )
+                    ],
+                  )
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -574,17 +591,50 @@ class CreateRoomCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   const Text(
-                    'Share your npub with your friend and ask them to join the room in order to play the game!',
+                    'Share your npub with your friend and ask them to join the room in order to play the game.',
+                    style: TextStyle(
+                      fontSize: 16,
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  SelectableText(
-                    npubEncode,
+                  // SelectableText(
+                  //   npubEncode,
+                  // ),
+                  GestureDetector(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: npubEncode));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Code copied to clipboard!'),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.grey.shade200,
+                      ),
+                      child: SelectableText(
+                        npubEncode,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: woodSmoke,
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   const Text(
                     'Currently waiting for an opponent to join the room...',
+                    style: TextStyle(
+                      fontSize: 16,
+                      // color: Colors.black54,
+                    ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   ExpandedOutlinedButton(
                     onTap: () {
                       NostrJS.closeRelay();

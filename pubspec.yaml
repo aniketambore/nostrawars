@@ -22,12 +22,19 @@ dependencies:
   pointycastle: ^3.7.0
   crypto: ^3.0.2
   js: ^0.6.5
+  envied: ^0.3.0
+  qr_flutter: ^4.0.0
+  http: ^0.13.5
+  flutter_web_plugins:
+    sdk: flutter
 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^2.0.0
+  build_runner: ^2.3.3
+  envied_generator: ^0.3.0
 
 flutter:
   uses-material-design: true

@@ -43,10 +43,12 @@
     <style>
       body {
         overflow: hidden;
+        background: linear-gradient(to bottom, #171628, #092E7F);
       }
 
       #loading {
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
         position: fixed;
@@ -54,55 +56,85 @@
         left: 0;
         right: 0;
         bottom: 0;
-        background-color: rgba(33, 35, 50, 0.8);
         z-index: 9999;
       }
 
-      #loading img {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(0.5);
-        animation: move 5s linear infinite;
-      }
-
-      #loading h1 {
+      #loading .plane-container {
         position: absolute;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        text-align: center;
+        animation: move 5s linear infinite;
+      }
+
+      #loading .plane {
+        width: 112px;
+        height: 75px;
+        background-image: url("icons/player.png");
+        background-size: contain;
+        background-repeat: no-repeat;
+        animation: rotate 1s linear infinite;
+      }
+
+      #loading h1 {
         color: white;
         text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
         font-size: 64px;
         font-weight: bold;
         font-family: Arial, sans-serif;
+        animation: breathe 3s ease-in-out infinite;
       }
 
       @keyframes move {
         0% {
-          transform: translate(-50%, -50%) rotate(0deg) scale(0.5);
+          transform: translate(-50%, -50%) scale(0.5) rotate(0deg);
         }
 
         25% {
-          transform: translate(-100%, -100%) rotate(0deg) scale(0.5);
+          transform: translate(25%, -50%) scale(0.5) rotate(45deg);
         }
 
         50% {
-          transform: translate(-50%, -50%) rotate(0deg) scale(0.5);
+          transform: translate(25%, 50%) scale(0.5) rotate(90deg);
         }
 
         75% {
-          transform: translate(0%, 0%) rotate(0deg) scale(0.5);
+          transform: translate(-50%, 50%) scale(0.5) rotate(135deg);
         }
 
         100% {
-          transform: translate(-100%, 0%) rotate(0deg) scale(0.5);
+          transform: translate(-50%, -50%) scale(0.5) rotate(180deg);
+        }
+      }
+
+      @keyframes rotate {
+        0% {
+          transform: rotate(0deg);
+        }
+
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      @keyframes breathe {
+        0% {
+          transform: scale(1);
+        }
+
+        50% {
+          transform: scale(1.2);
+        }
+
+        100% {
+          transform: scale(1);
         }
       }
     </style>
-    <h1>Nostra Wars</h1>
-    <img src="icons/ufo.png" alt="Loading..." />
+    <h1>Nostrawars</h1>
+    <div class="plane-container">
+      <div class="plane"></div>
+    </div>
   </div>
 
 

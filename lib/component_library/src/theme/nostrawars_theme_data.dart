@@ -13,31 +13,21 @@ class LightThemeData extends NostraWarsThemeData {
 }
 
 class DarkThemeData extends NostraWarsThemeData {
-  // @override
-  // ThemeData get materialThemeData => ThemeData(
-  //       brightness: Brightness.dark,
-  //       primarySwatch: persianBlue.toMaterialColor(),
-  //     );
-
   @override
   ThemeData get materialThemeData => ThemeData(
         brightness: Brightness.dark,
         primaryColor: const Color(0xFFBB86FC),
         scaffoldBackgroundColor: const Color(0xFF121212),
         cardColor: const Color(0xFF1E1E1E),
-        disabledColor: const Color(0xFF3E3E3E),
         primaryTextTheme: const TextTheme(
           titleLarge: TextStyle(
             color: Color(0xFFFFFFFF),
             fontWeight: FontWeight.bold,
           ),
-          titleMedium: TextStyle(
+          bodyMedium: TextStyle(
             color: Color(0xFFFFFFFF),
           ),
-          bodyLarge: TextStyle(
-            color: Color(0xFFFFFFFF),
-          ),
-          labelLarge: TextStyle(
+          bodySmall: TextStyle(
             color: Color(0xFFFFFFFF),
             fontWeight: FontWeight.bold,
           ),
