@@ -107,7 +107,6 @@ class _WithdrawSatsScreenState extends State<WithdrawSatsScreen> {
               child: Center(
                 child: ResponsiveBuilder(
                   maxWidth: 768,
-                  maxHeight: 553,
                   child: SingleChildScrollView(
                     child: Card(
                       elevation: 8,

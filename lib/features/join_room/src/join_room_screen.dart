@@ -267,7 +267,6 @@ class _JoinRoomScreenState extends State<JoinRoomScreen> {
                   : Center(
                       child: ResponsiveBuilder(
                         maxWidth: 768,
-                        maxHeight: 503,
                         child: SingleChildScrollView(
                           child: Card(
                             elevation: 8,

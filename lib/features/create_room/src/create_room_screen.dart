@@ -558,7 +558,6 @@ class CreateRoomCard extends StatelessWidget {
     return Center(
       child: ResponsiveBuilder(
         maxWidth: 768,
-        maxHeight: 503,
         child: SingleChildScrollView(
           child: Card(
             elevation: 8,

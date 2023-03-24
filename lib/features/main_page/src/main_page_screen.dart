@@ -100,8 +100,6 @@ class _MainPageScreenState extends State<MainPageScreen> {
                                         const PayInvoiceScreen(
                                       action: "Create Room",
                                     ),
-                                    // builder: (context) =>
-                                    //     const CreateRoomScreen(),
                                   ),
                                 );
                               },

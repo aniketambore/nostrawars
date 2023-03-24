@@ -16,7 +16,7 @@ class ResponsiveBuilder extends StatelessWidget {
     return ConstrainedBox(
       constraints: BoxConstraints(
         maxWidth: maxWidth,
-        maxHeight: maxHeight ?? double.infinity,
+        // maxHeight: maxHeight ?? double.infinity,
       ),
       child: child,
     );

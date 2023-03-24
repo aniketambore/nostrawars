@@ -16,7 +16,6 @@ class LNBitsApi {
       "X-Api-Key": Env.lnbitsInvoiceKey,
       "Content-Type": "application/json",
     };
-    print('[+] headers: $headers');
     final body = {
       "out": false,
       "amount": amount,
@@ -78,7 +77,6 @@ class LNBitsApi {
         await http.post(url, headers: headers, body: jsonEncode(body));
     final statusCode = response.statusCode;
     if (statusCode == 201) {
-      print('[+] response body: ${response.body}');
       final responseData = jsonDecode(response.body);
       final withdrawLink = WithdrawLinkRM.fromJson(responseData);
       return withdrawLink;

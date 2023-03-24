@@ -134,7 +134,6 @@ class _PayInvoiceScreenState extends State<PayInvoiceScreen> {
               child: Center(
                 child: ResponsiveBuilder(
                   maxWidth: 768,
-                  maxHeight: 553,
                   child: SingleChildScrollView(
                       child: Card(
                     elevation: 8,
@@ -151,26 +150,29 @@ class _PayInvoiceScreenState extends State<PayInvoiceScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Icon(Icons.qr_code),
-                              Text(
-                                'Pay Invoice to ${widget.action}',
-                                style: TextStyle(
-                                  fontSize: FontSize.mediumLarge,
-                                  fontWeight: FontWeight.bold,
-                                  shadows: [
-                                    Shadow(
-                                      blurRadius: 4,
-                                      color: white.withOpacity(0.8),
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
+                          SizedBox(
+                            width: 768,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Icon(Icons.qr_code),
+                                Text(
+                                  'Pay Invoice to ${widget.action}',
+                                  style: TextStyle(
+                                    fontSize: FontSize.mediumLarge,
+                                    fontWeight: FontWeight.bold,
+                                    shadows: [
+                                      Shadow(
+                                        blurRadius: 4,
+                                        color: white.withOpacity(0.8),
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(),
-                            ],
+                                const SizedBox(),
+                              ],
+                            ),
                           ),
                           const SizedBox(height: 32),
                           buildInvoiceQR()
